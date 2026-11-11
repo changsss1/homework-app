@@ -67,6 +67,8 @@ def load_all():
     books = sh.worksheet("독서인증").get_all_records()
     summary = sh.worksheet("포인트요약").get_all_records()
 
+DAYS = ["월", "화", "수", "목", "금"]   # 파일 위쪽 상수 근처에 추가
+
     ss.subjects = [
         {
             "id": r["과목ID"],
@@ -129,16 +131,16 @@ def count_tasks():
     return sum(
         1
         for s in ss.subjects
-        for k in range(1, s["count"] + 1)
-        if ss.get(f"chk_{s['id']}_{k}", False)
+        for k in range(1, 6)
+        if s["days"][k - 1] and ss.get(f"chk_{s['id']}_{k}", False)
     )
 
 def task_points():
     return sum(
         s["point"]
         for s in ss.subjects
-        for k in range(1, s["count"] + 1)
-        if ss.get(f"chk_{s['id']}_{k}", False)
+        for k in range(1, 6)
+        if s["days"][k - 1] and ss.get(f"chk_{s['id']}_{k}", False)
     )
     
 def count_new_books():
@@ -232,17 +234,28 @@ st.divider()
 tab1, tab2, tab3 = st.tabs(["🐱 이번 주 숙제", "📚 독서인증", "🛍️ 포인트 상점"])  # 🆕 탭 3개
 
 with tab1:
-    for s in ss.subjects:
-        st.markdown(f"**🐾 {s['name']}**  ·  체크당 {s['point']}P")
-        cols = st.columns(s["count"])
-        for k in range(1, s["count"] + 1):
-            cols[k - 1].checkbox(
-                f"{k}회",
-                key=f"chk_{s['id']}_{k}",
-                on_change=on_task_change,
-                args=(s["id"], k),
-            )
-
+    today_idx = datetime.datetime.now(ZoneInfo("Asia/Seoul")).weekday()  # 월=0
+    day_tabs = st.tabs(
+        [f"{d} ⭐" if i == today_idx else d for i, d in enumerate(DAYS)]
+    )
+    for k, dtab in enumerate(day_tabs, start=1):
+        with dtab:
+            todays = [s for s in ss.subjects if s["days"][k - 1]]
+            done = sum(1 for s in todays if ss.get(f"chk_{s['id']}_{k}", False))
+            if not todays:
+                st.info("이 날은 숙제가 없어요 😺")
+                continue
+            st.progress(done / len(todays), text=f"{DAYS[k-1]}요일 {done}/{len(todays)} 완료")
+            for s in todays:
+                st.checkbox(
+                    f"🐾 {s['name']}  (+{s['point']}P)",
+                    key=f"chk_{s['id']}_{k}",
+                    on_change=on_task_change,
+                    args=(s["id"], k),
+                )
+            if done == len(todays):
+                st.success("🎉 오늘 일과 끝! 냥이가 칭찬해요 🐱")
+                
 with tab2:
     st.write("책을 다 읽으면 체크해 주세요! 📖")
     for i, b in enumerate(ss.books):
