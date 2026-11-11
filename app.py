@@ -23,7 +23,7 @@ st.markdown(
 )
 
 TASK_POINT = 10   # 숙제 체크 1개당 점수
-BOOK_POINT = 10   # 독서인증 1권당 점수
+BOOK_POINT = 50   # 독서인증 1권당 점수
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 ss = st.session_state
 
@@ -32,7 +32,11 @@ ss = st.session_state
 def to_bool(v):
     return v is True or str(v).strip().upper() == "TRUE"
 
-
+def to_int(v, default):
+    try:
+        return int(float(v))
+    except (ValueError, TypeError):
+        return default
 @st.cache_resource
 def get_spreadsheet():
     creds = Credentials.from_service_account_info(
