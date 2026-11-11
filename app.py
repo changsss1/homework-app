@@ -24,6 +24,7 @@ st.markdown(
 
 TASK_POINT = 10   # 숙제 체크 1개당 점수
 BOOK_POINT = 50   # 독서인증 1권당 점수
+DAYS = ["월", "화", "수", "목", "금"]   # ← 여기에 추가
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 ss = st.session_state
 
@@ -67,14 +68,13 @@ def load_all():
     books = sh.worksheet("독서인증").get_all_records()
     summary = sh.worksheet("포인트요약").get_all_records()
 
-DAYS = ["월", "화", "수", "목", "금"]   # 파일 위쪽 상수 근처에 추가
-
+    
     ss.subjects = [
         {
             "id": r["과목ID"],
             "name": r["과목명"],
-            "count": min(int(r["숙제개수"]), 5),
             "point": to_int(r.get("체크당포인트"), TASK_POINT),
+            "days": [to_bool(r[d]) if d in r else True for d in DAYS],
         }
         for r in subjects
     ]
