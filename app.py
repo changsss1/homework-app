@@ -32,11 +32,14 @@ ss = st.session_state
 def to_bool(v):
     return v is True or str(v).strip().upper() == "TRUE"
 
+
 def to_int(v, default):
     try:
         return int(float(v))
     except (ValueError, TypeError):
         return default
+
+
 @st.cache_resource
 def get_spreadsheet():
     creds = Credentials.from_service_account_info(
@@ -64,7 +67,7 @@ def load_all():
     books = sh.worksheet("독서인증").get_all_records()
     summary = sh.worksheet("포인트요약").get_all_records()
 
-        ss.subjects = [
+    ss.subjects = [
         {
             "id": r["과목ID"],
             "name": r["과목명"],
@@ -130,7 +133,14 @@ def count_tasks():
         if ss.get(f"chk_{s['id']}_{k}", False)
     )
 
-
+def task_points():
+    return sum(
+        s["point"]
+        for s in ss.subjects
+        for k in range(1, s["count"] + 1)
+        if ss.get(f"chk_{s['id']}_{k}", False)
+    )
+    
 def count_new_books():
     return sum(
         1
@@ -160,9 +170,9 @@ def on_book_change(i):
 
 
 def weekly_settle():
-    add = count_tasks() * TASK_POINT + count_new_books() * BOOK_POINT
+    add = task_points() + count_new_books() * BOOK_POINT
     new_base = ss.base_points + add
-
+    
     items = [("'포인트요약'!C2", [[new_base]])]
     for sid, row in ss.daily_rows.items():
         items.append((f"'일일숙제1'!C{row}:G{row}", [[False] * 5]))
@@ -183,7 +193,7 @@ def buy_item(name, price):
     sh = get_spreadsheet()
     # 시트에 적힌 최신 누적 포인트를 먼저 읽어서 계산 (점수 꼬임 방지)
     base_now = int(float(sh.worksheet("포인트요약").acell("C2").value))
-    weekly = count_tasks() * TASK_POINT + count_new_books() * BOOK_POINT
+    weekly = task_points() + count_new_books() * BOOK_POINT
     if base_now + weekly < price:
         ss.shop_msg = ("error", "포인트가 부족해요 😿")
         return
@@ -211,7 +221,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-total = ss.base_points + count_tasks() * TASK_POINT + count_new_books() * BOOK_POINT
+total = ss.base_points + task_points() + count_new_books() * BOOK_POINT
 c1, c2, c3 = st.columns([1, 2, 1])
 with c2:
     st.metric(label="🐟 모은 생선 포인트", value=f"{total} P")
@@ -223,7 +233,7 @@ tab1, tab2, tab3 = st.tabs(["🐱 이번 주 숙제", "📚 독서인증", "🛍
 
 with tab1:
     for s in ss.subjects:
-        st.markdown(f"**🐾 {s['name']}**")
+        st.markdown(f"**🐾 {s['name']}**  ·  체크당 {s['point']}P")
         cols = st.columns(s["count"])
         for k in range(1, s["count"] + 1):
             cols[k - 1].checkbox(
