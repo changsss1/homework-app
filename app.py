@@ -84,6 +84,23 @@ def load_all():
 
     ss.base_points = int(float(summary[0]["지난주까지누적"]))
 
+    # 🆕 상점 상품 불러오기
+    shop_rows = sh.worksheet("상점").get_all_records()
+    ss.shop_items = [
+        {"name": str(r["상품명"]).strip(), "price": int(float(r["가격"]))}
+        for r in shop_rows
+        if str(r.get("상품명", "")).strip() and to_bool(r.get("사용여부", True))
+    ]
+
+    # 🆕 최근 구매기록 불러오기 (최신 10개)
+    buy_rows = sh.worksheet("구매기록").get_all_records()
+    history = [
+        {"date": str(r.get("날짜", "")), "name": r["상품명"], "price": r["가격"]}
+        for r in buy_rows
+        if str(r.get("상품명", "")).strip()
+    ]
+    ss.purchases = history[::-1][:10]
+
 
 try:
     if "loaded" not in ss:
@@ -152,6 +169,28 @@ def weekly_settle():
     ss.show_reset_msg = add
 
 
+# 🆕 상점에서 교환하기
+def buy_item(name, price):
+    sh = get_spreadsheet()
+    # 시트에 적힌 최신 누적 포인트를 먼저 읽어서 계산 (점수 꼬임 방지)
+    base_now = int(float(sh.worksheet("포인트요약").acell("C2").value))
+    weekly = count_tasks() * TASK_POINT + count_new_books() * BOOK_POINT
+    if base_now + weekly < price:
+        ss.shop_msg = ("error", "포인트가 부족해요 😿")
+        return
+
+    new_base = base_now - price
+    today = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
+    sh.worksheet("포인트요약").update_acell("C2", new_base)
+    sh.worksheet("구매기록").append_row(
+        [today, name, price], value_input_option="USER_ENTERED"
+    )
+    ss.base_points = new_base
+    ss.purchases.insert(0, {"date": today, "name": name, "price": price})
+    ss.purchases = ss.purchases[:10]
+    ss.shop_msg = ("success", f"🎉 '{name}' 교환 완료! -{price}P")
+
+
 def refresh():
     ss.pop("loaded", None)
 
@@ -171,7 +210,7 @@ with c2:
 
 st.divider()
 
-tab1, tab2 = st.tabs(["🐱 이번 주 숙제", "📚 독서인증"])
+tab1, tab2, tab3 = st.tabs(["🐱 이번 주 숙제", "📚 독서인증", "🛍️ 포인트 상점"])  # 🆕 탭 3개
 
 with tab1:
     for s in ss.subjects:
@@ -198,6 +237,38 @@ with tab2:
             on_change=on_book_change,
             args=(i,),
         )
+
+# 🆕 상점 탭
+with tab3:
+    st.write(f"🐟 지금 쓸 수 있는 포인트: **{total} P**")
+
+    if "shop_msg" in ss:
+        kind, text = ss.pop("shop_msg")
+        if kind == "success":
+            st.success(text)
+        else:
+            st.error(text)
+
+    if not ss.shop_items:
+        st.info("상점 탭에 상품이 아직 없어요. 구글 시트의 '상점' 탭에 추가해 주세요!")
+
+    for idx, item in enumerate(ss.shop_items):
+        left, right = st.columns([3, 1])
+        left.markdown(f"**{item['name']}**  \n🐟 {item['price']} P")
+        right.button(
+            "교환",
+            key=f"buy_{idx}",
+            on_click=buy_item,
+            args=(item["name"], item["price"]),
+            disabled=total < item["price"],
+        )
+
+    st.divider()
+    st.markdown("**🧾 최근 교환 기록**")
+    if not ss.purchases:
+        st.caption("아직 교환한 게 없어요.")
+    for p in ss.purchases:
+        st.write(f"{p['date']}  ·  {p['name']}  (-{p['price']}P)")
 
 st.divider()
 
