@@ -261,7 +261,7 @@ with tab1:
                 st.success(msg)
                 
 with tab2:
-    st.write("책을 다 읽으면 체크해 주세요! 📖")
+    st.write("책을 다 읽으면 체크해 주세요! 📖 +50P ")
     for i, b in enumerate(ss.books):
         label = f"📖 {b['name']}"
         if ss[f"bdate_{i}"]:
