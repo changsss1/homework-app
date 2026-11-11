@@ -217,7 +217,7 @@ def refresh():
 
 
 # ---------- 화면 ----------
-st.title("🐾 냐옹이와 함께하는 숙제 대작전! 🐱")
+st.title("🐾 냐옹이와 함께하는 승리의 일정! 🐱")
 st.markdown(
     "<p style='text-align: center; color: #7f8c8d;'>숙제를 완료하고 체크하면 고양이 생선 포인트가 쑥쑥! 🐟</p>",
     unsafe_allow_html=True,
@@ -231,7 +231,7 @@ with c2:
 
 st.divider()
 
-tab1, tab2, tab3 = st.tabs(["🐱 이번 주 숙제", "📚 독서인증", "🛍️ 포인트 상점"])  # 🆕 탭 3개
+tab1, tab2, tab3 = st.tabs(["🐱 이번 주 할일", "📚 독서인증", "🛍️ 포인트 상점"])  # 🆕 탭 3개
 
 with tab1:
     today_idx = datetime.datetime.now(ZoneInfo("Asia/Seoul")).weekday()  # 월=0
