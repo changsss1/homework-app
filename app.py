@@ -5,7 +5,7 @@ import gspread
 import streamlit as st
 from google.oauth2.service_account import Credentials
 
-st.set_page_config(page_title="냥이 숙제 펀치!", page_icon="🐱", layout="centered")
+st.set_page_config(page_title="승리의알찬하루!", page_icon="🐱", layout="centered")
 
 st.markdown(
     """
