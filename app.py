@@ -24,7 +24,7 @@ st.markdown(
 
 TASK_POINT = 10   # 숙제 체크 1개당 점수
 BOOK_POINT = 50   # 독서인증 1권당 점수
-DAYS = ["월", "화", "수", "목", "금"]   # ← 여기에 추가
+DAYS = ["월", "화", "수", "목", "금", "주간"]   # ← 여기에 추가
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 ss = st.session_state
 
@@ -82,7 +82,7 @@ def load_all():
     for idx, r in enumerate(daily):
         sid = r["과목ID"]
         ss.daily_rows[sid] = idx + 2
-        for k in range(1, 6):
+        for k in range(1, 7):
             ss[f"chk_{sid}_{k}"] = to_bool(r.get(f"체크{k}"))
 
     ss.books = []
@@ -131,7 +131,7 @@ def count_tasks():
     return sum(
         1
         for s in ss.subjects
-        for k in range(1, 6)
+        for k in range(1, 7)
         if s["days"][k - 1] and ss.get(f"chk_{s['id']}_{k}", False)
     )
 
@@ -139,7 +139,7 @@ def task_points():
     return sum(
         s["point"]
         for s in ss.subjects
-        for k in range(1, 6)
+        for k in range(1, 7)
         if s["days"][k - 1] and ss.get(f"chk_{s['id']}_{k}", False)
     )
     
@@ -177,8 +177,8 @@ def weekly_settle():
     
     items = [("'포인트요약'!C2", [[new_base]])]
     for sid, row in ss.daily_rows.items():
-        items.append((f"'일일숙제1'!C{row}:G{row}", [[False] * 5]))
-        for k in range(1, 6):
+        items.append((f"'일일숙제1'!C{row}:H{row}", [[False] * 6]))
+        for k in range(1, 7):
             ss[f"chk_{sid}_{k}"] = False
     for i, b in enumerate(ss.books):
         if ss[f"book_{i}"] and not ss[f"settled_{i}"]:
@@ -234,18 +234,21 @@ st.divider()
 tab1, tab2, tab3 = st.tabs(["🐱 이번 주 할일", "📚 독서인증", "🛍️ 포인트 상점"])  # 🆕 탭 3개
 
 with tab1:
-    today_idx = datetime.datetime.now(ZoneInfo("Asia/Seoul")).weekday()  # 월=0
+    wd = datetime.datetime.now(ZoneInfo("Asia/Seoul")).weekday()  # 월=0 ... 일=6
+    today_idx = wd if wd < 5 else -1   # 주말엔 ⭐ 없음
     day_tabs = st.tabs(
         [f"{d} ⭐" if i == today_idx else d for i, d in enumerate(DAYS)]
     )
     for k, dtab in enumerate(day_tabs, start=1):
         with dtab:
+            is_week = DAYS[k - 1] == "주간"
+            label = DAYS[k - 1] if is_week else f"{DAYS[k - 1]}요일"
             todays = [s for s in ss.subjects if s["days"][k - 1]]
             done = sum(1 for s in todays if ss.get(f"chk_{s['id']}_{k}", False))
             if not todays:
-                st.info("이 날은 숙제가 없어요 😺")
+                st.info("여기엔 숙제가 없어요 😺")
                 continue
-            st.progress(done / len(todays), text=f"{DAYS[k-1]}요일 {done}/{len(todays)} 완료")
+            st.progress(done / len(todays), text=f"{label} {done}/{len(todays)} 완료")
             for s in todays:
                 st.checkbox(
                     f"🐾 {s['name']}  (+{s['point']}P)",
@@ -254,7 +257,8 @@ with tab1:
                     args=(s["id"], k),
                 )
             if done == len(todays):
-                st.success("🎉 오늘 일과 끝! 냥이가 칭찬해요 🐱")
+                msg = "🎉 이번 주 숙제 끝! 냥이가 칭찬해요 🐱" if is_week else "🎉 오늘 일과 끝! 냥이가 칭찬해요 🐱"
+                st.success(msg)
                 
 with tab2:
     st.write("책을 다 읽으면 체크해 주세요! 📖")
