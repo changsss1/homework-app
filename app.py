@@ -64,8 +64,13 @@ def load_all():
     books = sh.worksheet("독서인증").get_all_records()
     summary = sh.worksheet("포인트요약").get_all_records()
 
-    ss.subjects = [
-        {"id": r["과목ID"], "name": r["과목명"], "count": min(int(r["숙제개수"]), 5)}
+        ss.subjects = [
+        {
+            "id": r["과목ID"],
+            "name": r["과목명"],
+            "count": min(int(r["숙제개수"]), 5),
+            "point": to_int(r.get("체크당포인트"), TASK_POINT),
+        }
         for r in subjects
     ]
     ss.daily_rows = {}
